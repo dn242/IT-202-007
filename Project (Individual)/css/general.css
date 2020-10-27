@@ -1,0 +1,10 @@
+body {
+	background-color: #232323;
+	color: #C39F0F;
+	font-weight: bold;
+}
+
+.form-control:focus{
+	box-shadow: 0 0 0 0.2rem rgba(220, 191, 76, 0.57);
+	border: 1px solid yellow;
+}
