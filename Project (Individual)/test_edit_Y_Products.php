@@ -63,7 +63,7 @@
 		<div class="col-2"></div>
 		<div class="col-4">
 			<form method="POST" style="margin-top:10px;">
-				<div class="text-center" style="height:650px;padding: 15px 15px 15px 15px; border:2px solid #524f2a; border-radius: 10px; background:#262514; box-shadow: 0 0 15px 1px yellow;">
+				<div class="text-center" style="height:500px;padding: 15px 15px 15px 15px; border:2px solid #524f2a; border-radius: 10px; background:#262514; box-shadow: 0 0 15px 1px yellow;">
 					<div class="row" style="margin-bottom:20px;padding-bottom:10px; border-bottom: 1px solid #524f2a;">
 						<div class="col-8">
 							<input class="form-control bg-dark text-warning text-center" name="id" placeholder="ID"/>
@@ -99,25 +99,18 @@
 		</div>
 		<div class="col-4" >
 			<form method="POST" style="margin-top:10px;">
-				<div class="text-center" style="height:650px;padding: 15px 15px 15px 15px; border:2px solid #524f2a; border-radius: 10px; background:#262514; box-shadow: 0 0 15px 1px yellow;">
+				<div class="text-center" style="height:500px;padding: 15px 15px 15px 15px; border:2px solid #524f2a; border-radius: 10px; background:#262514; box-shadow: 0 0 15px 1px yellow;">
 					<label>Name</label>
 					<input class="form-control bg-dark text-warning text-center mx-auto" name="name" value="<?php if(isset($result["name"])){ echo $result["name"];}?>" placeholder="Name"/><br>
-					<label>category</label>
-					<input class="form-control bg-dark text-warning text-center mx-auto" name="category" value="<?php if(isset($result["category"])){ echo $result["category"];}?>" placeholder="Category"/><br>
 					<label>Quantity</label>
 					<input class="form-control bg-dark text-warning text-center" type="number" min="1" value="<?php if(isset($result["quantity"])){ echo $result["quantity"];}?>" name="quantity"/><br>
 					<label>Price</label>
 					<input step=".01" class="form-control bg-dark text-warning text-center" type="number" min="0.01" value="<?php if(isset($result["price"])){ echo $result["price"];}?>" name="price"/><br>
 					<label>Description</label>
 					<input class="form-control bg-dark text-warning text-center mx-auto" name="description" placeholder="Text here..." value="<?php if(isset($result["description"])){ echo $result["description"];}?>"/><br>
-					<label>Visible to non-admins</label>
-					<select required name="visibility" class="form-control text-center bg-dark text-warning">
-						<option value=0>No</option>
-						<option value=1>Yes</option>
-					</select>
-					
-					<input class="btn btn-dark mx-auto" type="submit" name="save" value="save" style="margin-top:20px;"/><br>
-					
+					<label>Visibility</label>
+					<input class="form-control bg-dark text-warning text-center mx-auto" name="visibility" placeholder="Text here..." value="<?php if(isset($result["visibility"])){ echo $result["visibility"];}?>"/><br>
+					<input class="btn btn-dark mx-auto" type="submit" name="save" value="save"/><br>
 					<input style="visibility: hidden;height:0;" name="idRight" readonly value="<?php echo $result["id"];?>" placeholder="ID"/><br>
 				</div>
 			</form>
@@ -132,22 +125,18 @@
 				//TODO add proper validation/checks
 				$id = $_POST["idRight"];
 				$name = $_POST["name"];
-				$category = $_POST["category"];
 				$quantity = $_POST["quantity"];
 				$price = $_POST["price"];
 				$description = $_POST["description"];
-				$visibility = $_POST["visibility"];
 				$modified = date('Y-m-d H:i:s');//calc
 				$user = get_user_id();
 				$db = getDB();
-				$stmt = $db->prepare("UPDATE Y_Products set name=:name, category=:category, quantity=:quantity, price=:price, description=:description, visibility=:visibility where id=:id");
+				$stmt = $db->prepare("UPDATE Y_Products set name=:name, quantity=:quantity, price=:price, description=:description where id=:id");
 				$r = $stmt->execute([
 					":name"=>$name,
-					":category"=>$category,
 					":quantity"=>$quantity,
 					":price"=>$price,
 					":description"=>$description,
-					":visibility"=>$visibility,
 					":id"=>$id
 				]);
 				if($r){

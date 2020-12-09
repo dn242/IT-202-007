@@ -1,4 +1,4 @@
-<?php require_once(__DIR__ . "/partials/nav.php"); ?>
+<?php require_once(__DIR__ . "/partials/nav.php");?>
 
 <head> 
   <link rel="stylesheet" href="bootstrap/Bootstrap4/conFusion/node_modules/bootstrap/dist/css/bootstrap.min.css">
@@ -84,6 +84,17 @@
 								$_SESSION["user"] = $result;//we can save the entire result array since we removed password
 								//on successful login let's serve-side redirect the user to the home page.
 								header("Location: home.php");
+								$stmt = $db->prepare("
+SELECT Y_Roles.name FROM Y_Roles JOIN Y_UserRoles on Y_Roles.id = Y_UserRoles.role_id where Y_UserRoles.user_id = :user_id and Y_Roles.is_active = 1 and Y_UserRoles.is_active = 1");
+								$stmt->execute([":user_id" => $result["id"]]);
+								$roles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+								$_SESSION["user"] = $result;//we can save the entire result array since we removed password
+								if ($roles) {
+									$_SESSION["user"]["roles"] = $roles;
+								}
+								else {
+									$_SESSION["user"]["roles"] = [];
+								}
 							}
 							else {
 								echo "<br>Wrong password.<br>Please try again.<br>";
@@ -99,6 +110,7 @@
 				}
 			}
 			?>
+			<?php //echo var_export($_SESSION, true);?>
 		</div>
 		<div class="col-md-3">
 		</div>

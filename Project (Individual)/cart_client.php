@@ -2,9 +2,12 @@
   <!-- Bootstrap CSS -->
 	<link rel="stylesheet" href="bootstrap/Bootstrap4/conFusion/node_modules/bootstrap/dist/css/bootstrap.min.css">
 	<link rel="stylesheet" href="bootstrap/Bootstrap4/conFusion/node_modules/font-awesome/css/font-awesome.min.css">
-  <link rel="stylesheet" href="bootstrap/Bootstrap4/conFusion/node_modules/bootstrap-social/bootstrap-social.css">
-  
-  <link rel="stylesheet" href="./css/general.css">
+	<link rel="stylesheet" href="bootstrap/Bootstrap4/conFusion/node_modules/bootstrap-social/bootstrap-social.css">
+	  
+	<link rel="stylesheet" href="./css/general.css">
+	
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+	
 </head>
 
 
@@ -15,7 +18,11 @@
 		//this will redirect to login and kill the rest of this script (prevent it from executing)
 		die(header("Location: login.php"));
 	}
+	$sumNum=0;
 	?>
+	
+	
+	
 	<div class="row" style="margin-top:100px;">
 		<div class="col-12 text-center">
 			<?php
@@ -164,13 +171,15 @@
 											$sumQuan+=$value["cartQuantity"];
 										}
 									}
-									echo "<tr class=\"bg-dark\" style=\"color:yellow;font-weight:bold;\"><td><td></td></td><td>Summary:</td><td>".$sumQuan."</td><td>".$sumNum."$</td></tr>";
+									echo "<tr class=\"bg-dark\" style=\"color:yellow;font-weight:bold;\"><td>Summary:</td><td></td><td>".$sumQuan."</td><td>".$sumNum."$</td><td></td></tr>";
 								}
 								?>
 							</tbody>
 						</table>
 					</div>
-					<input class="btn btn-dark" type="submit" name="updateCart" value="Update Cart" style="margin-top:20px;"/>
+					<input class="btn btn-dark" type="submit" name="emptyCart" value="Empty Cart" style="margin-top:20px;"/>
+					<input class="btn btn-dark" type="submit" name="updateCart" value="Update Cart" style="margin-top:20px;margin-left:5px;"/>
+					<?php if($sumNum>0): ?><button type="button" class="btn btn-danger" id="purchaseModalToggler" name="purchaseModalToggler" style="margin-top:20px;margin-left:5px;" data-toggle="modal" data-target="#purchaseModal">Checkout</button> <?php endif ;?>
 				</form>
 			</div>
 		</div>
@@ -280,11 +289,208 @@
 					}
 				}
 			}
+			
+			if(isset($_POST["emptyCart"])){
+				$stmt = $db->prepare("DELETE FROM Y_Cart WHERE user_id=:user_id");
+				$r = $stmt->execute([
+					":user_id"=>get_user_id()
+				]);
+				if($r){
+					//echo "Updated successfully.";
+					echo "<script>location.replace(location.href);</script>";
+				}
+				else{
+					$e = $stmt->errorInfo();
+					//echo "Error while updating.";
+				}
+			}
+			
+			
+			if(isset($_POST["purchaseButton"])){
+				$wrongdoings="";
+				$wrongdoingsCount=0;
+				for($i = 0 ; $i < $index ; $i++){
+					if($result3[$i]["cartQuantity"]>$result3[$i]["productQuantity"]){
+						$wrongdoings = $wrongdoings.$result3[$i]["productName"]." has only ".$result3[$i]["productQuantity"]." pieces remaining.<br>";
+						$wrongdoingsCount+=1;
+					}
+				}
+				if(!isset($wrongdoings) || $wrongdoings==""){
+					//echo "all good!";
+					$stmt = $db->prepare("INSERT INTO Y_Orders (user_id, total_price, address, payment_method) VALUES (:user_id, :total_price, :address, :payment_method)");
+					$r = $stmt->execute([
+						":user_id"=>get_user_id(),
+						":total_price"=>$sumNum,
+						":payment_method"=>$_POST["paymentMethod"],
+						":address"=>$_POST["purchaseAddressStreet"]." ".$_POST["purchaseAddressCity"]." ".$_POST["purchaseAddressState"]." ".$_POST["purchaseAddressZip"]
+					]);
+					if($r){
+						//echo "Updated successfully.";
+						$stmt = $db->prepare(" SELECT id FROM Y_Orders WHERE user_id = :user_id ORDER BY created DESC LIMIT 1");
+						$r = $stmt->execute([
+							":user_id"=>get_user_id()
+						]);
+						$currentID=$stmt->fetch(PDO::FETCH_ASSOC);
+						for($i = 0 ; $i < $index ; $i++){
+							$stmt = $db->prepare("INSERT INTO Y_Orderitems (order_id, product_id, quantity, unit_price) VALUES (:order_id, :product_id, :quantity, :unit_price)");
+							$r = $stmt->execute([
+								":order_id"=>$currentID["id"],
+								":product_id"=>$result3[$i]["productID"],
+								":quantity"=>$result3[$i]["cartQuantity"],
+								":unit_price"=>$result3[$i]["productPrice"]
+							]);
+							if($r){
+								$successMessage="Your Order has been placed successfully!<br>Thank you and be back soon!<br>";
+							}
+							else{
+								$e = $stmt->errorInfo();
+							}
+						}
+						
+					}
+					else{
+						$e = $stmt->errorInfo();
+						echo var_export($e);
+					}
+					for($i = 0 ; $i < $index ; $i++){
+						//echo $result3[$i]["productName"]."<br>";
+						$newQuantity=$result3[$i]["productQuantity"]-$result3[$i]["cartQuantity"];
+						//echo "New Quantity = ".$newQuantity."<br>";
+						$stmt = $db->prepare("UPDATE Y_Products set quantity=:quantity where id=:id");
+						$r = $stmt->execute([
+							":quantity"=>$newQuantity,
+							":id"=>$result3[$i]["productID"]
+						]);
+						if($r){
+							//echo "Updated successfully.";
+							
+						}
+						else{
+							$e = $stmt->errorInfo();
+							//echo "Error while updating.";
+						}
+					}
+					$stmt = $db->prepare("DELETE FROM Y_Cart WHERE user_id=:user_id");
+					$r = $stmt->execute([
+						":user_id"=>get_user_id()
+					]);
+					if($r){
+						//echo "Updated successfully.";
+						
+					}
+				}
+			}
+			
 			?>
 		</div>
 	</div>
 	<?php require(__DIR__ . "/partials/flash.php");?>
 
+	<!-- Modals -->
+	<form method="POST">
+		<div class="modal fade" id="purchaseModal" style="background-color: black;background-color: rgba(0, 0, 0, 0.6);" tabindex="-1" role="dialog" aria-labelledby="purchaseModal" aria-hidden="true">
+		  <div class="modal-dialog modal-dialog-centered" role="document">
+			<div class="modal-content  bg-dark">
+				<div class="modal-header">
+					<h5 class="modal-title" id="exampleModalLongTitle">Purchase Your Items</h5>
+					<button type="button" class="close text-warning" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<div class="modal-body">
+					<div style="width:100%;">
+						<p style="width:50%;" class="float-left text-left">Total amount:</p>
+						<p id="purchaseTotal" style="width:50%;display:inline-block;" class="float-right text-right text-danger"><?php echo $sumNum."$";?></p>
+					</div>
+					<div style="width:100%;">
+						<label for="paymentMethod" class="float-left" style="width:50%;">Payment Method: </label>
+						<select class="form-control bg-dark text-warning text-center float-right" name="paymentMethod" style="width:50%;display:inline-block;">
+							<option value="cash">Cash</option>
+							<option value="mastercard">MasterCard</option>
+							<option value="visa">Visa</option>
+							<option value="amex">Amex</option>
+							<option value="other">Other</option>
+						</select>
+					</div>
+					<p class="text-center" style="width:100%;margin-top:100px;border-top: 1px solid grey;">Address</p>
+					<div style="width:100%;">
+						
+						<label class="float-left" style="width:50%;">Street: </label>
+						<input class="form-control bg-dark text-warning text-center mx-auto" placeholder="" style="margin-top:10px;width:50%;" type="text" id="purchaseAddressStreet" name="purchaseAddressStreet" required/>
+						<label class="float-left" style="width:50%;">City: </label>
+						<input class="form-control bg-dark text-warning text-center mx-auto" placeholder="" style="margin-top:10px;width:50%;" type="text" id="purchaseAddress" name="purchaseAddressCity" required/>
+						<label class="float-left" style="width:50%;">State: </label>
+						<input class="form-control bg-dark text-warning text-center mx-auto" placeholder="" style="margin-top:10px;width:50%;" type="text" id="purchaseAddressState" name="purchaseAddressState" required/>
+						<label class="float-left" style="width:50%;">Zip: </label>
+						<input class="form-control bg-dark text-warning text-center mx-auto" placeholder="" style="margin-top:10px;width:50%;" type="text" id="purchaseAddressZip" name="purchaseAddressZip" required/>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<input type="submit" name="purchaseButton" class="btn btn-danger" value="Purchse"/>
+				</div>
+			</div>
+		  </div>
+		</div>
+	</form>
+	
+	<?php if(isset($wrongdoings) && $wrongdoings!=""): ?>
+		<script>
+		jQuery(window).on('load', function(){       
+		   $('#error').modal('show');
+		});
+		</script>
+	<?php endif; ?>
+	<div class="modal fade" id="error" style="background-color: black;background-color: rgba(0, 0, 0, 0.6);" tabindex="-1" role="dialog" aria-labelledby="purchaseModal" aria-hidden="true">
+		 <div class="modal-dialog modal-dialog-centered" role="document">
+			<div class="modal-content  bg-dark">
+				<div class="modal-header">
+					<h5 class="modal-title" id="exampleModalLongTitle">Oops! We have some problem!</h5>
+					<button type="button" class="close text-warning" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<div class="modal-body text-center">
+					<div style="width:100%;margin-bottom:20px;">
+						<?php if(isset($wrongdoings) && $wrongdoings!=""): ?>
+							<p style="color:red;"> <?php echo $wrongdoings; ?> </p>
+							<p>Please adjust the quantity to all items mentioned above</p>
+						<?php endif; ?>
+					</div>
+					<button type="button" class="btn btn-secondary mx auto" data-dismiss="modal">Okay</button>
+				</div>
+			</div>
+		  </div>
+		</div>
+	</div>
+	
+	<?php if(isset($successMessage) && $successMessage!=""): ?>
+		<script>
+		jQuery(window).on('load', function(){      
+			$('#success').modal({backdrop: 'static', keyboard: false})
+			$('#success').modal('show');
+		});
+		</script>
+	<?php endif; ?>
+	<div class="modal fade" id="success" style="background-color: black;background-color: rgba(0, 0, 0, 0.6);" tabindex="-1" role="dialog" aria-labelledby="purchaseModal" aria-hidden="true">
+		 <div class="modal-dialog modal-dialog-centered" role="document">
+			<div class="modal-content  bg-dark">
+				<div class="modal-header">
+					<h5 class="modal-title" id="exampleModalLongTitle">Purchase Completed!</h5>
+				</div>
+				<div class="modal-body text-center">
+					<div style="width:100%;margin-bottom:20px;">
+						<?php if(isset($successMessage) && $successMessage!=""): ?>
+							<p style="color:yellow;"> <?php echo $successMessage; ?> </p>
+						<?php endif; ?>
+					</div>
+					<button type="button" class="btn btn-secondary mx auto" onclick="okaySuccess()">Okay</button>
+				</div>
+			</div>
+		  </div>
+		</div>
+	</div>
+	
 	<script>
 		function deleteItem(item,item2){
 			console.log(item);
@@ -304,7 +510,14 @@
 			xhttp.open("POST", "deleter.php", true);
 			xhttp.send(JSON.stringify(msg));
 		}
+		
+		function okaySuccess(){
+			location.replace(location.href);
+		}
 	</script>
+	<script src="bootstrap/Bootstrap4/conFusion/node_modules/jquery/dist/jquery.slim.min.js"></script>
+    <script src="bootstrap/Bootstrap4/conFusion/node_modules/popper.js/dist/umd/popper.min.js"></script>
+    <script src="bootstrap/Bootstrap4/conFusion/node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
 </body>
 
 
