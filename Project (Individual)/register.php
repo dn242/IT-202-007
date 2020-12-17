@@ -62,6 +62,19 @@
 					<div class="col-4">
 					</div>
 				</div>
+				<div class="row" style="margin-top:10px;">
+					<div class="col-4 text-right">
+						<label for="p2">Profile Status:</label>
+					</div>
+					<div class="col-4">
+						<select required name="visibility" class="form-control text-center bg-dark text-warning">
+							<option value=1>Public</option>
+							<option value=0>Private</option>
+						</select>
+					</div>
+					<div class="col-4">
+					</div>
+				</div>
 				<div class="row" style="margin-top:20px;">
 					<input class="btn btn-dark mx-auto" type="submit" name="register" value="Register"/>
 				</div>
@@ -87,6 +100,9 @@
 					if (isset($_POST["username"])) {
 						$username = $_POST["username"];
 					}
+					if (isset($_POST["visibility"])) {
+						$visibility = $_POST["visibility"];
+					}
 					$isValid = true;
 					//check if passwords match on the server side
 					if ($password == $confirm) {
@@ -106,9 +122,9 @@
 						$db = getDB();
 						if (isset($db)) {
 							//here we'll use placeholders to let PDO map and sanitize our data
-							$stmt = $db->prepare("INSERT INTO Y_Users(email, username, password) VALUES(:email,:username, :password)");
+							$stmt = $db->prepare("INSERT INTO Y_Users(email, username, visibility, password) VALUES(:email,:username, :visibility, :password)");
 							//here's the data map for the parameter to data
-							$params = array(":email" => $email, ":username" => $username, ":password" => $hash);
+							$params = array(":email" => $email, ":username" => $username, ":visibility" => $visibility, ":password" => $hash);
 							$r = $stmt->execute($params);
 							//let's just see what's returned
 							//echo "db returned: " . var_export($r, true);

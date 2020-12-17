@@ -20,14 +20,23 @@ require_once(__DIR__ . "/../lib/helpers.php");
 		<div class="collapse navbar-collapse" id="Navbar">
 			<ul class="navbar-nav mx-auto">
 				<li class="nav-item"><a class="nav-link" href="home.php"><span class="fa fa-home fa-lg"></span>Home</a></li>
-	<?php if (!is_logged_in()): ?>
-	  <li class="nav-item"><a class="nav-link" href="login.php">Login</a></li>
-	  <li class="nav-item"><a class="nav-link" href="register.php">Register</a></li>
-	<?php endif; ?>
-	<?php if (is_logged_in()): ?>
-	  <li class="nav-item"><a class="nav-link" href="profile.php">Profile</a></li>
-	  <li class="nav-item"><a class="nav-link" href="logout.php">Logout</a></li>
-	<?php endif; ?>
+				<?php if (!is_logged_in()): ?>
+				  <li class="nav-item"><a class="nav-link" href="login.php">Login</a></li>
+				  <li class="nav-item"><a class="nav-link" href="register.php">Register</a></li>
+				<?php endif; ?>
+				<?php if (has_role("Admin") && is_logged_in()): ?>
+					<li class="nav-item"><a class="nav-link" href="admin_create_product.php">Create</a></li>
+					<li class="nav-item"><a class="nav-link" href="admin_edit_product.php">Edit</a></li>
+					<li class="nav-item"><a class="nav-link" href="orderHistory_Admin.php">Order_History_Admin</a></li>
+				<?php endif; ?>
+					
+				<?php if (is_logged_in()): ?>
+				<li class="nav-item"><a class="nav-link" href="cart_client.php">Cart</a></li>
+					<li class="nav-item"><a class="nav-link" href="inventory.php">Inventory</a></li>
+					<li class="nav-item"><a class="nav-link" href="orderHistory.php">Orders</a></li>
+					<li class="nav-item"><a class="nav-link" href="profile.php">Profile</a></li>
+					<li class="nav-item"><a class="nav-link" href="logout.php">Logout</a></li>
+				<?php endif; ?>
 			</ul>
 		</div>
 	</div>

@@ -12,6 +12,13 @@
 <body>
 
 	<?php
+		$db = getDB();
+		if(isset($_GET["prof_id"])){$query_id=$_GET["prof_id"];}
+		else{$query_id=get_user_id();}
+		$stmt = $db->prepare("SELECT email, username, visibility from Y_Users where id = :id");
+		$stmt->execute([":id" => $query_id]);
+		$prof_status = $stmt->fetch(PDO::FETCH_ASSOC);
+	
 		$responseForUser = "";
 		//Note: we have this up here, so our update happens before our get/fetch
 		//that way we'll fetch the updated data and have it correctly reflect on the form below
@@ -21,7 +28,7 @@
 			die(header("Location: login.php"));
 		}
 
-		$db = getDB();
+		
 		//save data if we submitted the form
 		if (isset($_POST["saved"])) {
 			$isValid = true;
@@ -87,7 +94,7 @@
 				//password is optional, so check if it's even set
 				//if so, then check if it's a valid reset request
 				if (!empty($_POST["password"]) && !empty($_POST["confirm"]) && !empty($_POST["old_password"])) {
-					$stmt = $db->prepare("SELECT email, username, password from Y_Users WHERE id = :id LIMIT 1");
+					$stmt = $db->prepare("SELECT email, username, password, visibility from Y_Users WHERE id = :id LIMIT 1");
 					$stmt->execute([":id" => get_user_id()]);
 					$result = $stmt->fetch(PDO::FETCH_ASSOC);
 					if(password_verify($_POST['old_password'],$result['password'])){
@@ -113,7 +120,7 @@
 					}
 				}
 				//fetch/select fresh data in case anything changed
-				$stmt = $db->prepare("SELECT email, username, password from Y_Users WHERE id = :id LIMIT 1");
+				$stmt = $db->prepare("SELECT email, username, password, visibility from Y_Users WHERE id = :id LIMIT 1");
 				$stmt->execute([":id" => get_user_id()]);
 				$result = $stmt->fetch(PDO::FETCH_ASSOC);
 				if ($result) {
@@ -134,6 +141,29 @@
 		<div class="col-lg-3">
 		</div>
 		<div class="col-lg-6">
+			<?php if(isset($_GET["prof_id"]) && $_GET["prof_id"]!=get_user_id()): ?>
+			<?php if($prof_status["visibility"]==1):?>
+			<div class="row">
+				<div class="col-2 text-right">
+					<label>Email:</label>
+				</div>
+				<div class="col-8">
+					<p class="form-control bg-dark text-warning text-center mx-auto" style="font-weight: bold;"><?php safer_echo($prof_status["email"]); ?></p>
+				</div>
+				<div class="col-2 text-right"></div>
+			</div>
+			<?php endif; ?>
+			<div class="row">
+				<div class="col-2 text-right">
+					<label>Username:</label>
+				</div>
+				<div class="col-8">
+					<p class="form-control bg-dark text-warning text-center mx-auto" style="font-weight: bold;"><?php safer_echo($prof_status["username"]); ?></p>
+				</div>
+				<div class="col-2 text-right"></div>
+			</div>
+			<?php endif ; ?>
+			<?php if(!isset($_GET["prof_id"]) || $_GET["prof_id"]==get_user_id()): ?>
 			<form method="POST">
 				<div class="row">
 					<div class="col-4 text-right">
@@ -179,6 +209,7 @@
 					<input class="btn btn-dark mx-auto" type="submit" name="saved" value="Save Profile"/>
 				</div>
 			</form>
+			<?php endif ; ?>
 		</div>
 		<div class="col-lg-3">
 		</div>
