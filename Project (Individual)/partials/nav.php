@@ -28,10 +28,10 @@ require_once(__DIR__ . "/../lib/helpers.php");
 					<li class="nav-item"><a class="nav-link" href="admin_create_product.php">Create</a></li>
 					<li class="nav-item"><a class="nav-link" href="admin_edit_product.php">Edit</a></li>
 					<li class="nav-item"><a class="nav-link" href="orderHistory_Admin.php">Order_History_Admin</a></li>
-					<li class="nav-item"><a class="nav-link" href="cart_client.php">Cart</a></li>
 				<?php endif; ?>
 					
 				<?php if (is_logged_in()): ?>
+				<li class="nav-item"><a class="nav-link" href="cart_client.php">Cart</a></li>
 					<li class="nav-item"><a class="nav-link" href="inventory.php">Inventory</a></li>
 					<li class="nav-item"><a class="nav-link" href="orderHistory.php">Orders</a></li>
 					<li class="nav-item"><a class="nav-link" href="profile.php">Profile</a></li>

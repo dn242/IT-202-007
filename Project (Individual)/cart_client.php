@@ -11,7 +11,28 @@
 </head>
 
 
-<body>
+<body onload="pager( 'productListPageIndex-' , '1')">
+	<style>
+		.pagination p {
+		  color: white;
+		  float: left;
+		  padding: 8px 16px;
+		  text-decoration: none;
+		  transition: background-color .3s;
+		  border-radius:100%;
+		  border-color: orange;
+		  cursor: pointer;
+		}
+
+		.pagination p.active {
+		  background-color: black;
+		  color: orange;
+		  border-color: black;
+		}
+
+		.pagination p:hover:not(.active) {background-color: orange;}
+	</style>
+
 	<?php 
 	require_once(__DIR__ . "/partials/nav.php"); 
 	if (!is_logged_in()) {
@@ -26,14 +47,7 @@
 	<div class="row" style="margin-top:100px;">
 		<div class="col-12 text-center">
 			<?php
-			if(true){
-				$db = getDB();
-				$stmt = $db->prepare("SELECT * from Y_Products");
-				$stmt->execute([
-				]);
-				$result2 = $stmt->fetchAll(PDO::FETCH_ASSOC);
-				//echo $result["name"];
-			}
+			
 			$isClicked="hidden";
 			if(isset($_POST["loadByName"])){
 				$isClicked="visible";
@@ -66,10 +80,41 @@
 				}
 				//echo var_export($result3,true);
 			}
+			
+			if(true){
+				$current_user_id = get_user_id();
+				$db = getDB();
+				$stmt = $db->prepare("SELECT COUNT(id) AS products FROM Y_Products WHERE visibility = 1");
+				$r = $stmt->execute([]);
+				$totalNum = $stmt->fetch(PDO::FETCH_ASSOC);
+				if($r){
+					//echo "Success! HERE";
+				}
+				else{
+					$e = $stmt->errorInfo();
+					//echo "Error... HERE<br>";
+				}
+				//echo var_export($result3,true);
+			}
 			if(isset($_POST["loadName"])){
 				$current_user_id = get_user_id();
 				$lookup_name = $_POST["detail_view_name"];
 				$db = getDB();
+				
+				$stmt = $db->prepare("SELECT id FROM Y_Products WHERE name = :lookUpName");
+				$r = $stmt->execute([":lookUpName" => $lookup_name]);
+				$DesiredID = $stmt->fetch(PDO::FETCH_ASSOC);
+				
+				$stmt = $db->prepare("SELECT COUNT(Y_Orderitems.id) AS orderitemsCount FROM ((Y_Orders JOIN Y_Orderitems ON Y_Orders.id = Y_Orderitems.order_id) JOIN Y_Users ON Y_Users.id = Y_Orders.user_id ) JOIN Y_Products ON Y_Products.id = Y_Orderitems.product_id where Y_Users.id = :id AND Y_Products.name = :lookUpName");
+				$r = $stmt->execute([
+					":lookUpName" => $lookup_name,
+					":id" => $current_user_id
+				]);
+				$countOrders= $stmt->fetch(PDO::FETCH_ASSOC);
+				if($r){
+					//echo "It worked! ".$countOrders["orderitemsCount"]." <br>";
+				}
+				
 				$stmt = $db->prepare("SELECT cartPrice, Y_Products.id as productID, Y_Products.name as productName, Y_Products.quantity as productQuantity, Y_Products.price as productPrice, Y_Products.description as productDescription, Y_Cart.id as cartID, Y_Cart.user_id as cartUser_id, Y_Cart.product_id as cartProduct_ID, Y_Cart.quantity as cartQuantity from Y_Products JOIN Y_Cart on Y_Products.id = Y_Cart.product_id where Y_Cart.user_id = :current_user_id AND Y_Products.name = :lookup_name");
 				$r = $stmt->execute([
 					":current_user_id" => 	$current_user_id,
@@ -82,41 +127,103 @@
 				else{
 					$e = $stmt->errorInfo();
 					//echo "Error... HERE<br>";
+					
 				}
-				//echo var_export($result4,true);
+				
+				$current_user_id = get_user_id();
+				$db = getDB();
+				$stmt = $db->prepare("SELECT SUM(Y_Ratings.rating) AS sum_rating, COUNT(Y_Ratings.id) AS numOfInstances FROM Y_Ratings JOIN Y_Products ON Y_Products.id = Y_Ratings.product_id WHERE Y_Products.name = :lookUpName");
+				$r = $stmt->execute([":lookUpName" => $lookup_name]);
+				$sumAndCount = $stmt->fetch(PDO::FETCH_ASSOC);
+				if($sumAndCount){
+					//echo "<br>HI<br>";
+				}
+				else{
+					$e = $stmt->errorInfo();
+					//echo var_export($e);
+					
+				}
+				if($sumAndCount["numOfInstances"]>0){
+					$totalRating=$sumAndCount["sum_rating"]/$sumAndCount["numOfInstances"];
+				}
+				else{
+					$totalRating="Unrated";
+				}
+			}
+			if(isset($_POST["submitRating"])){
+				$stmt = $db->prepare("INSERT INTO Y_Ratings (user_id, product_id, rating, rating_comment) VALUES (:user_id, :product_id, :rating, :rating_comment)");
+				$r = $stmt->execute([
+					":user_id"=>get_user_id(),
+					":product_id"=>$_POST["productID"],
+					":rating"=>$_POST["rating"],
+					":rating_comment"=>$_POST["rating_comment"]
+				]);
+				if($r){
+					//echo "Rating worked!<br>";
+				}
+				else{
+					$e = $stmt->errorInfo();
+					echo $_POST["productID"]."<br>";
+					echo var_export($e);
+				}
+			}
+			if(true){
+				$current_user_id = get_user_id();
+				$db = getDB();
+				$stmt = $db->prepare("SELECT DISTINCT Y_Products.name AS name FROM Y_Products JOIN (Y_Orderitems JOIN Y_Orders ON Y_Orderitems.order_id = Y_Orders.id) ON Y_Orderitems.product_id = Y_Products.id WHERE Y_Orders.user_id = :user");
+				$r = $stmt->execute([":user" => $current_user_id]);
+				$purchasedItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+				if($r){
+					//echo "Success! HERE";
+				}
+				else{
+					$e = $stmt->errorInfo();
+					//echo "Error... HERE<br>";
+					//echo var_export($e);
+				}
 			}
 			?>
 		</div>
 	</div>
+	
 	<div class="row">
 		<div class="col-2"></div>
 		<div class="col-4">
 			<form method="POST" style="margin-top:10px;">
 				<div class="text-center" style="height:500px;padding: 15px 15px 15px 15px; border:2px solid #524f2a; border-radius: 10px; background:#262514; box-shadow: 0 0 15px 1px yellow;">
 					<p class="bg-warning text-dark" style="border-radius: 10px;">Product List</p>
-					<div style="height:300px;overflow:auto;border-radius: 10px;border: 2px solid yellow" class="bg-dark">
+					<div style="border-radius: 10px;border: 2px solid yellow" class="bg-dark">
+						<?php
+							$counter=0;
+							$productListPages=floor($totalNum["products"] / 5) + 1;
+						?>
 						<table class="table table-dark table-striped text-center text-warning" style="">
+							<thead class="text-dark bg-warning">
+								<tr>
+									<th scope="col">Product Name</th>
+									<th scope="col">Created By</th>
+									<th scope="col"></th>
+								</tr>
+							</thead>
 							<tbody>
-									<?php
-									$counter=0;
-									foreach($result2 as $value){
-										if($value["visibility"]){
-											if($counter>0){
-												echo "<tr><td>".$value["name"]."</td><td><input type=\"radio\" name=\"productName\" class=\"btn btn-dark text-warning\" value=\"".$value["id"]."\"/></td></tr>";
-												//echo "<tr><td style=\"font-size:x-small;color:yellow;\">\"".$value["description"]."\"</td></tr>";
-											}
-											else{
-												echo "<tr><td>".$value["name"]."</td><td><input checked type=\"radio\" name=\"productName\" class=\"btn btn-dark text-warning\" value=\"".$value["id"]."\"/></td></tr>";
-												//echo "<tr><td style=\"font-size:x-small;color:yellow;\">\"".$value["description"]."\"</td></tr>";
-											}
-											$counter++;
-										}
-									}
-									?>
+								<?php for($i=0 ; $i<5; $i++): ?>
+								<tr>
+									<td><label id="productListName<?php echo $i; ?>"></label></td>
+									<td><a id="productListLink<?php echo $i; ?>" class="text-warning text-center" href=""></a></td>
+									<td><input id="productListInput<?php echo $i; ?>" type="radio" name="productName" class="btn btn-dark text-warning" value="" <?php if($i==0){echo "checked";}?>/></td>
+								</tr>
+								<?php endfor ?>
 							</tbody>
 						</table>
 					</div>
-					<input class="btn btn-dark mx-auto" type="submit" name="loadByName" value="Submit Name" style="margin-top:20px;"/>
+					<p class="float-left" style="margin-top:10px;width:15%;padding: 8px 16px;color:orange;">Pages: </p>
+					<div class="pagination float-left" style="margin-top:10px;width:55%;display:inline;">
+						<p id="productListPageIndex-1" onclick="pager( 'productListPageIndex-' , '1', '<?php echo $productListPages; ?>')" class="active" style="margin-right:5px;display:inline;"><?php echo 1; ?></p>
+						<?php for($i=2; $i<=$productListPages; $i++): ?>
+						<p id="productListPageIndex-<?php echo $i; ?>" onclick="pager( 'productListPageIndex-' , '<?php echo $i; ?>' , '<?php echo $productListPages; ?>')" style="margin-right:5px;display:inline;"><?php echo $i; ?></p>
+						<?php endfor ; ?>
+					</div>
+					<input class="btn btn-dark mx-auto float-right" type="submit" name="loadByName" value="Choose" style="margin-top:10px;width:30%;display:inline;"/>
 				</div>
 			</form>
 		</div>
@@ -197,7 +304,11 @@
 						<div class="col-4">
 							<select class="form-control bg-dark text-warning text-center" name="detail_view_name">
 								<?php foreach ($result3 as $value): ?>
-								<option value="<?php echo $value["productName"]; ?>"><?php echo $value["productName"]; ?></option>
+								<option class="bg-warning text-dark" value="<?php echo $value["productName"]; ?>"><?php echo $value["productName"]; ?></option>
+								<?php endforeach ; ?>
+								
+								<?php foreach ($purchasedItems as $value): ?>
+								<option class="bg-dark text-warning" value="<?php echo $value["name"]; ?>"><?php echo $value["name"]; ?></option>
 								<?php endforeach ; ?>
 							</select>
 						</div>
@@ -206,11 +317,12 @@
 						</div>
 					</div>
 					<div class="row">
+						<?php if(isset($result4["productName"])): ?>
 						<div class="col-3">
 							<p class="text-warning text-center mx-auto">Name:</p>
 						</div>
 						<div class="col-3">
-							<p class="text-warning text-center mx-auto">Quantity:</p>
+							<p class="text-warning text-center mx-auto">Quantity in Cart:</p>
 						</div>
 						<div class="col-3">
 							<p class="text-warning text-center mx-auto" >Current Price:</p>
@@ -218,9 +330,10 @@
 						<div class="col-3">
 							<p class="text-warning text-center mx-auto" >Price When Added:</p>
 						</div>
+						<?php endif ; ?>
 					</div>
 					<div class="row">
-						<?php if(isset($result4)): ?>
+						<?php if(isset($result4["productName"])): ?>
 						<div class="col-3">
 							<p class="form-control bg-dark text-warning text-center mx-auto"><?php echo $result4["productName"]; ?></p>
 						</div>
@@ -234,9 +347,41 @@
 							<p class="form-control bg-dark text-warning text-center mx-auto"><?php echo $result4["cartPrice"]; ?>$</p>
 						</div>
 						<?php endif ; ?>
+						<?php if(!isset($result4["productName"]) && isset($result4)): ?>
+						<div class="col-12">
+							<p class="form-control bg-dark text-warning text-center mx-auto"><?php echo $_POST["detail_view_name"]; ?></p>
+						</div>
+						<?php endif ; ?>
 					</div>
-					<div class="row">
-						<?php if(isset($result4)): ?><div class="col-12"><p class="form-control bg-dark text-warning text-center mx-auto" name="name"><?php  echo $result4["productDescription"]; ?></p></div><?php endif ; ?>
+					<div class="row" style="border-top:1px solid #524f2a;border-bottom:1px solid #524f2a; padding-bottom:10px;padding-top:20px;">
+						<?php if(isset($result4)): ?>
+						<div class="col-3">
+							<p class="form-control bg-dark text-warning text-center mx-auto">Purchased: <?php if($countOrders["orderitemsCount"]>0){echo "YES";$ratingAbility="block";}else{echo "NO";$ratingAbility="none";} ?></p>
+						</div>
+						<div class="col-3">
+							<p class="form-control bg-dark text-warning text-center mx-auto">In Cart: <?php if(isset($result4["productName"])){echo "YES";}else{ echo "NO";} ?></p>
+						</div>
+						<div class="col-6">
+							<p class="form-control bg-dark text-warning text-center mx-auto">Total Raiting: <?php echo $totalRating; ?></p>
+						</div>
+						<?php endif ; ?>
+					</div>
+					<div class="row" style="border-top:1px solid #524f2a;border-bottom:1px solid #524f2a; padding-bottom:10px;padding-top:20px;">
+						<?php if(isset($result4)): ?>
+						<div class="col-6">
+							<input type="number" max="5" min="0" step="1" name="rating" class="form-control bg-dark text-warning text-center mx-auto" placeholder="Rate it" style="display:<?php if(isset($ratingAbility)){echo $ratingAbility;}else{echo "none";}?>;" />
+						</div>
+						<div class="col-6">
+							<input name="rating_comment" maxlength="20" class="form-control bg-dark text-warning text-center mx-auto" placeholder="Leave a Comment" style="display:<?php if(isset($ratingAbility)){echo $ratingAbility;}else{echo "none";}?>;"/>
+						</div>
+						<?php endif ; ?>
+					</div>
+					<div class="row" style="padding-bottom:20px;padding-top:20px;">
+						<?php if(isset($result4["productName"])): ?><div class="col-12"><p class="form-control bg-dark text-warning text-center mx-auto" name="name"><?php  echo $result4["productDescription"]; ?></p></div><?php endif ; ?>
+					</div>
+					<div class="row" style="padding-bottom:20px;">
+						<input class="btn btn-danger ml-auto" type="submit" name="submitRating" value="Rate It!" style="margin-right:20px;display:<?php if(isset($ratingAbility)){echo $ratingAbility;}else{echo "none";}?>;"/>
+						<input class="btn btn-danger ml-auto" type="text" name="productID" value="<?php if(isset($result4["productID"])){ echo $result4["productID"]; } else{ echo $DesiredID["id"];}?>" hidden />
 					</div>
 				</div>
 			</form>
@@ -493,12 +638,12 @@
 	
 	<script>
 		function deleteItem(item,item2){
-			console.log(item);
+			//console.log(item);
 			var msg = {
 				toDeleteID: item,
 				user_ID: item2,
 			};
-			console.log(JSON.stringify(msg));
+			//console.log(JSON.stringify(msg));
 			var xhttp = new XMLHttpRequest();
 			xhttp.onreadystatechange = function() {
 				if (this.readyState == 4 && this.status == 200) {
@@ -514,10 +659,59 @@
 		function okaySuccess(){
 			location.replace(location.href);
 		}
+		
+		function pager(paginationName, index, pages){
+			var previousPage=0;
+			for(var i = 1; i<=pages; i++){
+				if(document.getElementById(paginationName+i).classList.contains("active")){
+					document.getElementById(paginationName+i).classList.remove("active");
+					previousPage=i;
+					break;
+				}
+			}
+			document.getElementById(paginationName+index).classList.add("active");
+			//console.log(item);
+			var msg = {
+				offset: index,
+			};
+			//console.log(JSON.stringify(msg));
+			var xhttp = new XMLHttpRequest();
+			xhttp.onreadystatechange = function() {
+				if (this.readyState == 4 && this.status == 200) {
+					//console.log("It was done.");
+					//console.log(this);
+					var paragraph = this["response"];
+					var lines = paragraph.split("|");
+					//location.replace(location.href);
+					for(var i=0; i<5 ; i++){
+						if(i<lines.length &&lines[i].split("~")[0]!=""){
+							words=lines[i].split("~");
+							document.getElementById("productListName".concat(i)).innerHTML = words[0];
+							document.getElementById("productListLink".concat(i)).href = words[1];
+							document.getElementById("productListLink".concat(i)).innerHTML = words[2];
+							document.getElementById("productListInput".concat(i)).value = words[3];
+							document.getElementById("productListInput".concat(i)).style.display = "block";
+						}
+						else{
+							document.getElementById("productListName".concat(i)).innerHTML = "";
+							document.getElementById("productListLink".concat(i)).href = "";
+							document.getElementById("productListLink".concat(i)).innerHTML = "";
+							document.getElementById("productListInput".concat(i)).value = "";
+							document.getElementById("productListInput".concat(i)).style.display = "none";
+						}
+					}
+					//document.getElementById("test").innerHTML = lines;
+				}
+			};
+			xhttp.open("POST", "pager.php", true);
+			xhttp.send(JSON.stringify(msg))
+			
+		}
 	</script>
 	<script src="bootstrap/Bootstrap4/conFusion/node_modules/jquery/dist/jquery.slim.min.js"></script>
     <script src="bootstrap/Bootstrap4/conFusion/node_modules/popper.js/dist/umd/popper.min.js"></script>
     <script src="bootstrap/Bootstrap4/conFusion/node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+	
 </body>
 
 
